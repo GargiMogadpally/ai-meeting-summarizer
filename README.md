@@ -325,5 +325,13 @@ The application successfully demonstrates:
 - Smart AI simulation with realistic processing
 - Robust error handling and user feedback
 - Scalable code structure for production deployment
+ Live Demo
+  Deployed Application: [[Your-Deployed-URL-Here](https://ai-meeting-summarizer1.vercel.app/)]
 
+ Quick Start
+1. Visit the deployed link above
+2. Paste your meeting transcript
+3. Customize the AI prompt
+4. Generate and edit your summary
+5. Share via email
 Ready for backend integration and deployment with minimal additional development required.
