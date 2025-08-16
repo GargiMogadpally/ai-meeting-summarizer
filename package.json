@@ -1,0 +1,44 @@
+{
+ "name": "ai-meeting-summarizer",
+ "version": "1.0.0",
+ "description": "AI-powered meeting notes summarizer and email sharer",
+ "main": "server.js",
+ "scripts": {
+   "start": "node server.js",
+   "dev": "nodemon server.js",
+   "build": "echo 'No build process needed for static frontend'",
+   "test": "echo 'No tests specified yet'"
+ },
+ "keywords": [
+   "ai",
+   "meeting",
+   "notes",
+   "summarizer",
+   "email",
+   "automation"
+ ],
+ "author": "Your Name",
+ "license": "MIT",
+ "dependencies": {
+   "express": "^4.18.2",
+   "cors": "^2.8.5",
+   "helmet": "^7.1.0",
+   "dotenv": "^16.3.1",
+   "groq-sdk": "^0.3.3",
+   "@sendgrid/mail": "^7.7.0",
+   "nodemailer": "^6.9.7",
+   "express-rate-limit": "^7.1.5",
+   "express-validator": "^7.0.1"
+ },
+ "devDependencies": {
+   "nodemon": "^3.0.2"
+ },
+ "engines": {
+   "node": ">=18.0.0"
+ },
+ "repository": {
+   "type": "git",
+   "url": "https://github.com/yourusername/ai-meeting-summarizer.git"
+ },
+ "homepage": "https://ai-meeting-summarizer.vercel.app"
+}
