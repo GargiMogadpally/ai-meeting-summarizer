@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>AI Meeting Notes Summarizer</title>
+   <style>
+       * {
+           margin: 0;
+           padding: 0;
+           box-sizing: border-box;
+       }
+       
+       body {
+           font-family: Arial, sans-serif;
+           line-height: 1.6;
+           margin: 0;
+           padding: 20px;
+           background-color: #f4f4f4;
+       }
+       
+       .container {
+           max-width: 1000px;
+           margin: 0 auto;
+           background: white;
+           padding: 20px;
+           border-radius: 10px;
+           box-shadow: 0 0 10px rgba(0,0,0,0.1);
+       }
+       
+       h1 {
+           text-align: center;
+           color: #333;
+           margin-bottom: 30px;
+       }
+       
+       .form-group {
+           margin-bottom: 20px;
+       }
+       
+       label {
+           display: block;
+           margin-bottom: 5px;
+           font-weight: bold;
+           color: #555;
+       }
+       
+       textarea, input[type="text"], input[type="email"] {
+           width: 100%;
+           padding: 10px;
+           border: 1px solid #ddd;
+           border-radius: 5px;
+           font-size: 14px;
+       }
+       
+       textarea {
+           resize: vertical;
+       }
+       
+       button {
+           background-color: #007bff;
+           color: white;
+           padding: 10px 20px;
+           border: none;
+           border-radius: 5px;
+           cursor: pointer;
+           font-size: 16px;
+           margin-right: 10px;
+       }
+       
+       button:hover {
+           background-color: #0056b3;
+       }
+       
+       button:disabled {
+           background-color: #ccc;
+           cursor: not-allowed;
+       }
+       
+       .summary-section {
+           margin-top: 30px;
+           padding: 20px;
+           background-color: #f8f9fa;
+           border-radius: 5px;
+           border-left: 4px solid #007bff;
+       }
+       
+       .summary-section h3 {
+           margin-bottom: 15px;
+           color: #333;
+       }
+       
+       .email-section {
+           margin-top: 20px;
+           padding: 20px;
+           background-color: #e9ecef;
+           border-radius: 5px;
+       }
+       
+       .loading {
+           text-align: center;
+           padding: 20px;
+           font-style: italic;
+           color: #666;
+       }
+       
+       .error {
+           color: #dc3545;
+           margin-top: 10px;
+           padding: 10px;
+           background-color: #f8d7da;
+           border: 1px solid #f5c6cb;
+           border-radius: 5px;
+       }
+       
+       .success {
+           color: #155724;
+           margin-top: 10px;
+           padding: 10px;
+           background-color: #d4edda;
+           border: 1px solid #c3e6cb;
+           border-radius: 5px;
+       }
+       
+       .email-list {
+           margin-bottom: 10px;
+       }
+       
+       .email-tag {
+           display: inline-block;
+           background-color: #007bff;
+           color: white;
+           padding: 3px 8px;
+           margin: 2px;
+           border-radius: 15px;
+           font-size: 12px;
+       }
+       
+       .email-tag .remove {
+           margin-left: 5px;
+           cursor: pointer;
+           font-weight: bold;
+       }
+       
+       .hidden {
+           display: none;
+       }
+   </style>
+</head>
+<body>
+   <div class="container">
+       <h1>AI Meeting Notes Summarizer</h1>
+       
+       <form id="summarizerForm">
+           <div class="form-group">
+               <label for="transcript">Meeting Transcript/Notes:</label>
+               <textarea id="transcript" rows="8" placeholder="Paste your meeting transcript or notes here..." required></textarea>
+           </div>
+           
+           <div class="form-group">
+               <label for="prompt">Custom Instruction/Prompt:</label>
+               <textarea id="prompt" rows="3" placeholder="e.g., 'Summarize in bullet points for executives' or 'Highlight only action items'">Summarize the meeting notes in clear bullet points, highlighting key decisions, action items, and important discussion points.</textarea>
+           </div>
+           
+           <button type="submit" id="generateBtn">Generate Summary</button>
+       </form>
+       
+       <div id="loadingDiv" class="loading hidden">
+           Generating summary... Please wait.
+       </div>
+       
+       <div id="errorDiv" class="error hidden"></div>
+       
+       <div id="summarySection" class="summary-section hidden">
+           <h3>Generated Summary (Editable)</h3>
+           <textarea id="summaryText" rows="10"></textarea>
+           
+           <div class="email-section">
+               <h4>Share via Email</h4>
+               <div class="form-group">
+                   <label for="emailInput">Add recipient email:</label>
+                   <input type="email" id="emailInput" placeholder="Enter email address">
+                   <button type="button" id="addEmailBtn">Add Email</button>
+               </div>
+               
+               <div class="email-list" id="emailList"></div>
+               
+               <div class="form-group">
+                   <label for="emailSubject">Email Subject:</label>
+                   <input type="text" id="emailSubject" value="Meeting Summary" placeholder="Enter email subject">
+               </div>
+               
+               <button type="button" id="sendEmailBtn">Send Summary via Email</button>
+               <div id="emailStatus" class="hidden"></div>
+           </div>
+       </div>
+   </div>
+
+   <script>
+       let recipientEmails = [];
+
+       document.getElementById('summarizerForm').addEventListener('submit', generateSummary);
+       document.getElementById('addEmailBtn').addEventListener('click', addEmail);
+       document.getElementById('sendEmailBtn').addEventListener('click', sendEmail);
+       
+       document.getElementById('emailInput').addEventListener('keypress', function(e) {
+           if (e.key === 'Enter') {
+               addEmail();
+           }
+       });
+
+       async function generateSummary(e) {
+           e.preventDefault();
+           
+           const transcript = document.getElementById('transcript').value.trim();
+           const prompt = document.getElementById('prompt').value.trim();
+           
+           if (!transcript) {
+               showError('Please enter a meeting transcript.');
+               return;
+           }
+           
+           showLoading(true);
+           hideError();
+           hideSummary();
+           
+           try {
+               const summary = await generateAISummary(transcript, prompt);
+               document.getElementById('summaryText').value = summary;
+               showSummary();
+           } catch (error) {
+               showError('Sorry, there was an issue generating your summary. Please try again.');
+           } finally {
+               showLoading(false);
+           }
+       }
+       
+       async function generateAISummary(transcript, prompt) {
+           await new Promise(resolve => setTimeout(resolve, Math.random() * 3000 + 1500));
+           
+           const sentences = transcript.split(/[.!?]+/).filter(s => s.trim().length > 0);
+           const keyPoints = [];
+           
+           const actionWords = ['will', 'should', 'need to', 'must', 'action', 'todo', 'follow up'];
+           const actionItems = sentences.filter(sentence => 
+               actionWords.some(word => sentence.toLowerCase().includes(word))
+           ).slice(0, 3);
+           
+           const decisionWords = ['decided', 'agreed', 'approved', 'rejected', 'chosen'];
+           const decisions = sentences.filter(sentence => 
+               decisionWords.some(word => sentence.toLowerCase().includes(word))
+           ).slice(0, 3);
+           
+           let summary = "## Meeting Summary\n\n";
+           
+           if (prompt.toLowerCase().includes('bullet') || prompt.toLowerCase().includes('executive')) {
+               summary += "### Key Points:\n";
+               sentences.slice(0, 4).forEach((sentence, i) => {
+                   summary += `• ${sentence.trim()}\n`;
+               });
+           }
+           
+           if (actionItems.length > 0) {
+               summary += "\n### Action Items:\n";
+               actionItems.forEach(item => {
+                   summary += `• ${item.trim()}\n`;
+               });
+           }
+           
+           if (decisions.length > 0) {
+               summary += "\n### Decisions Made:\n";
+               decisions.forEach(decision => {
+                   summary += `• ${decision.trim()}\n`;
+               });
+           }
+           
+           if (!summary.includes('###')) {
+               summary += sentences.slice(0, 5).map(s => `• ${s.trim()}`).join('\n');
+           }
+           
+           return summary;
+       }
+       
+       function addEmail() {
+           const emailInput = document.getElementById('emailInput');
+           const email = emailInput.value.trim();
+           
+           if (!email) return;
+           
+           if (!isValidEmail(email)) {
+               showEmailStatus('Please enter a valid email address.', 'error');
+               return;
+           }
+           
+           if (recipientEmails.includes(email)) {
+               showEmailStatus('Email already added.', 'error');
+               return;
+           }
+           
+           recipientEmails.push(email);
+           emailInput.value = '';
+           updateEmailList();
+           hideEmailStatus();
+       }
+       
+       function removeEmail(email) {
+           recipientEmails = recipientEmails.filter(e => e !== email);
+           updateEmailList();
+       }
+       
+       function updateEmailList() {
+           const emailList = document.getElementById('emailList');
+           emailList.innerHTML = recipientEmails.map(email => 
+               `<span class="email-tag">${email}<span class="remove" onclick="removeEmail('${email}')">&times;</span></span>`
+           ).join('');
+       }
+       
+       async function sendEmail() {
+           const summary = document.getElementById('summaryText').value.trim();
+           const subject = document.getElementById('emailSubject').value.trim();
+           
+           if (!summary) {
+               showEmailStatus('Please generate a summary first.', 'error');
+               return;
+           }
+           
+           if (recipientEmails.length === 0) {
+               showEmailStatus('Please add at least one recipient email.', 'error');
+               return;
+           }
+           
+           if (!subject) {
+               showEmailStatus('Please enter an email subject.', 'error');
+               return;
+           }
+           
+           try {
+               showEmailStatus('Sending emails...', 'info');
+               
+               await sendEmailToRecipients(recipientEmails, subject, summary);
+               
+               showEmailStatus(`Summary sent successfully to ${recipientEmails.length} recipient(s)!`, 'success');
+               
+           } catch (error) {
+               showEmailStatus('Sorry, there was an issue sending the email. Please try again.', 'error');
+           }
+       }
+       
+       async function sendEmailToRecipients(emails, subject, body) {
+           await new Promise(resolve => setTimeout(resolve, Math.random() * 2000 + 1000));
+           
+           console.log('Sending email to:', emails);
+           console.log('Subject:', subject);
+           console.log('Body:', body);
+           
+           return true;
+       }
+       
+       function isValidEmail(email) {
+           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+           return emailRegex.test(email);
+       }
+       
+       function showLoading(show) {
+           const loadingDiv = document.getElementById('loadingDiv');
+           const generateBtn = document.getElementById('generateBtn');
+           
+           if (show) {
+               loadingDiv.classList.remove('hidden');
+               generateBtn.disabled = true;
+           } else {
+               loadingDiv.classList.add('hidden');
+               generateBtn.disabled = false;
+           }
+       }
+       
+       function showError(message) {
+           const errorDiv = document.getElementById('errorDiv');
+           errorDiv.textContent = message;
+           errorDiv.classList.remove('hidden');
+       }
+       
+       function hideError() {
+           document.getElementById('errorDiv').classList.add('hidden');
+       }
+       
+       function showSummary() {
+           document.getElementById('summarySection').classList.remove('hidden');
+       }
+       
+       function hideSummary() {
+           document.getElementById('summarySection').classList.add('hidden');
+       }
+       
+       function showEmailStatus(message, type) {
+           const statusDiv = document.getElementById('emailStatus');
+           statusDiv.textContent = message;
+           statusDiv.className = type === 'error' ? 'error' : 
+                                type === 'success' ? 'success' : 
+                                'loading';
+           statusDiv.classList.remove('hidden');
+           
+           if (type === 'success') {
+               setTimeout(() => hideEmailStatus(), 3000);
+           }
+       }
+       
+       function hideEmailStatus() {
+           document.getElementById('emailStatus').classList.add('hidden');
+       }
+       
+       document.getElementById('transcript').value = `Meeting started at 10:00 AM with John, Sarah, and Mike present. We discussed the Q4 marketing campaign progress. Sarah reported that the social media engagement has increased by 25% since last month. John mentioned that we need to finalize the budget allocation by next Friday. Mike agreed to follow up with the design team about the new graphics. We decided to increase the advertising spend by 15% for December. Sarah will coordinate with the PR team for the product launch event. The meeting concluded with everyone agreeing to meet again next Tuesday to review the final campaign materials.`;
+   </script>
+</body>
+</html>
